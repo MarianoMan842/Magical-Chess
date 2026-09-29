@@ -14,6 +14,7 @@ const elJugadas = document.getElementById("jugadas");
 const elNarracion = document.getElementById("narracion");
 const elEstado = document.getElementById("estado");
 const elRespuestaTablas = document.getElementById("respuestaTablas");
+const elRespuestaRendicion = document.getElementById("respuestaRendicion");
 
 // Muestra u oculta los botones de aceptar/rechazar según haya oferta pendiente
 function actualizarBotonesTablas() {
@@ -21,6 +22,15 @@ function actualizarBotonesTablas() {
         elRespuestaTablas.classList.remove("oculto");
     } else {
         elRespuestaTablas.classList.add("oculto");
+    }
+}
+
+// Muestra u oculta los botones de confirmar/cancelar la rendición
+function actualizarBotonesRendicion() {
+    if (rendicionPendientePor) {
+        elRespuestaRendicion.classList.remove("oculto");
+    } else {
+        elRespuestaRendicion.classList.add("oculto");
     }
 }
 
@@ -61,6 +71,7 @@ let vozActiva = true;            // dictado de jugadas en voz alta
 let colorRendido = null;         // 'w' o 'b' si alguien se ha rendido; si no, null
 let tablasAcordadas = false;     // true si la partida terminó en tablas acordadas
 let tablasOfrecidasPor = null;   // 'w' o 'b' si hay una oferta de tablas pendiente
+let rendicionPendientePor = null; // 'w' o 'b' si alguien pidió rendirse y falta confirmar
 
 // Dibuja el tablero según la posición actual del juego
 function dibujarTablero() {
@@ -166,6 +177,12 @@ function pintarResaltados() {
 function alHacerClic(nombre) {
     // Si la partida terminó por rendición o tablas acordadas, no se mueve nada
     if (colorRendido || tablasAcordadas) return;
+
+    // Con una rendición pendiente de confirmar, hay que responderla antes de mover
+    if (rendicionPendientePor) {
+        dictar('Hay una rendición pendiente. Confirma con "sí" o cancela con "no".');
+        return;
+    }
 
     // Con una oferta de tablas pendiente hay que responderla antes de mover
     if (tablasOfrecidasPor) {
@@ -388,7 +405,25 @@ function extraerCasillas(texto) {
 function ejecutarJugadaHablada(texto, dictarFallo = true) {
     const limpio = texto.toLowerCase().trim();
 
+    // Respuesta a una rendición pendiente: "sí" confirma, "no" cancela.
+    // Se comprueba lo primero para que la respuesta no dispare otro comando.
+    if (rendicionPendientePor) {
+        if (/\b(si|sí|confirmo|confirmar|me rindo|rindo)\b/.test(limpio)) {
+            confirmarRendicion();
+            return { ok: true, mensaje: textoEstado() };
+        }
+        if (/\b(no|cancelo|cancelar|seguir|sigo)\b/.test(limpio)) {
+            cancelarRendicion();
+            return { ok: true, mensaje: "Rendición cancelada." };
+        }
+        // Cualquier otra cosa: recordamos que hay una pregunta pendiente
+        const mensaje = '¿Seguro que quieres rendirte? Di "sí, me rindo" o "no, seguir jugando".';
+        if (dictarFallo) dictar(mensaje);
+        return { ok: false, mensaje };
+    }
+
     // Comando de rendición por voz: "me rindo", "rendirse", "abandono"...
+    // Ahora solo pide confirmación; se confirma con la respuesta "sí" de arriba.
     if (/\b(me rindo|rendirse|rindo|abandono)\b/.test(limpio)) {
         if (colorRendido || tablasAcordadas || juego.game_over()) {
             const mensaje = "La partida ya ha terminado.";
@@ -570,7 +605,9 @@ function reiniciarPartida() {
     colorRendido = null;
     tablasAcordadas = false;
     tablasOfrecidasPor = null;
+    rendicionPendientePor = null;
     actualizarBotonesTablas();  // asegura que aceptar/rechazar queden ocultos
+    actualizarBotonesRendicion();  // asegura que confirmar/cancelar queden ocultos
     dibujarTablero();
     actualizarJugadas();
     actualizarNarracion();
@@ -581,26 +618,53 @@ function reiniciarPartida() {
 
 document.getElementById("reiniciar").addEventListener("click", reiniciarPartida);
 
-// Se rinde el jugador del turno actual; gana el color contrario.
+// Pide confirmación antes de rendirse: despliega los botones y pregunta por voz.
+// No termina la partida por sí sola; hay que confirmar con "sí" o cancelar con "no".
 function rendirse() {
-    // Si la partida ya terminó (por mate, tablas o una rendición previa), no hacemos nada
-    if (colorRendido || tablasAcordadas || juego.game_over()) return;
+    // Si la partida ya terminó, o hay una confirmación u oferta pendiente, no hacemos nada
+    if (colorRendido || tablasAcordadas || rendicionPendientePor || tablasOfrecidasPor || juego.game_over()) return;
 
-    colorRendido = juego.turn();
+    rendicionPendientePor = juego.turn();
+    casillaSeleccionada = null;
+    dibujarTablero();
+    actualizarBotonesRendicion();  // despliega confirmar/cancelar
+    // Preguntamos en voz alta; el jugador responde "sí" o "no"
+    hablarUrgente('¿Seguro que quieres rendirte? Di ": sí me rindo" para confirmar o ": no seguir jugando" para seguir jugando.');
+}
+
+// Confirma la rendición: se rinde el jugador que la pidió; gana el color contrario.
+function confirmarRendicion() {
+    if (!rendicionPendientePor) return;
+
+    colorRendido = rendicionPendientePor;
+    rendicionPendientePor = null;
     casillaSeleccionada = null;
     dibujarTablero();
     actualizarEstado();
+    actualizarBotonesRendicion();  // vuelve a ocultar confirmar/cancelar
     // Feedback hablado esencial para jugar sin ver la pantalla
     hablarUrgente(textoEstado());
 }
 
+// Cancela la rendición: la partida sigue con normalidad.
+function cancelarRendicion() {
+    if (!rendicionPendientePor) return;
+
+    rendicionPendientePor = null;
+    actualizarBotonesRendicion();  // vuelve a ocultar confirmar/cancelar
+    // Recordamos de quién es el turno para seguir jugando a ciegas
+    hablarUrgente("Rendición cancelada. " + textoEstado());
+}
+
 document.getElementById("rendirse").addEventListener("click", rendirse);
+document.getElementById("confirmarRendicion").addEventListener("click", confirmarRendicion);
+document.getElementById("cancelarRendicion").addEventListener("click", cancelarRendicion);
 
 // Ofrece tablas: la ofrece el jugador del turno actual y queda pendiente de que
 // el rival responda (aceptar o rechazar). No termina la partida por sí sola.
 function ofrecerTablas() {
-    // Si la partida ya terminó o ya hay una oferta pendiente, no hacemos nada
-    if (colorRendido || tablasAcordadas || tablasOfrecidasPor || juego.game_over()) return;
+    // Si la partida ya terminó, o hay una oferta o rendición pendiente, no hacemos nada
+    if (colorRendido || tablasAcordadas || tablasOfrecidasPor || rendicionPendientePor || juego.game_over()) return;
 
     tablasOfrecidasPor = juego.turn();
     casillaSeleccionada = null;

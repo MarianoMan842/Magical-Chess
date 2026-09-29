@@ -125,6 +125,12 @@ body {
     flex-direction: column;
     gap: 16px;
 }
+/* Botones de confirmación de rendición: se despliegan al pulsar "Me rindo" */
+.respuesta-rendicion {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 .oculto { display: none; }
 
 .estado {
