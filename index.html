@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ajedrez</title>
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+    <div class="tablero" id="tablero"></div>
+
+    <!-- Columna izquierda: estado y botones de control -->
+    <div class="controles">
+        <div class="estado" id="estado">Turno de las blancas</div>
+        <button id="reiniciar">Reiniciar partida</button>
+        <button id="rendirse">🏳️ Me rindo</button>
+        <button id="tablas">🤝 Tablas</button>
+        <div class="respuesta-tablas oculto" id="respuestaTablas">
+            <button id="aceptar">✅ Aceptar tablas</button>
+            <button id="rechazar">❌ Rechazar tablas</button>
+        </div>
+        <button id="voz">🔊 Voz activada</button>
+        <button id="describir">Describir posición</button>
+        <button id="escuchar">🎤 Decir jugada</button>
+        <div class="escuchando" id="escuchando"></div>
+    </div>
+
+    <!-- Columna del medio: jugadas -->
+    <div class="panel jugadas-col">
+        <h2>Jugadas</h2>
+        <div id="jugadas"><div class="sin-jugadas">Aún no hay jugadas</div></div>
+    </div>
+
+    <!-- Columna derecha: narración -->
+    <div class="panel narracion">
+        <h2>Narración</h2>
+        <div id="narracion"><div class="sin-jugadas">Aún no hay jugadas</div></div>
+    </div>
+
+    <!-- Scripts normales: funciona con doble clic, sin servidor -->
+    <script src="chess.min.js"></script>
+    <script src="juego.js"></script>
+</body>
+</html>

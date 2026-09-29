@@ -1,0 +1,216 @@
+:root {
+    --clara: #f0d9b5;
+    --oscura: #b58863;
+    --resaltada: #f7ec74;
+    --destino: rgba(20, 85, 30, 0.5);
+}
+
+body {
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 24px;
+    min-height: 100vh;
+    background: #2b2b2b;
+    margin: 0;
+    padding: 40px 0;
+    box-sizing: border-box;
+}
+
+.tablero {
+    display: grid;
+    grid-template-columns: repeat(8, 64px);
+    grid-template-rows: repeat(8, 64px);
+    border: 4px solid #333;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.casilla {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44px;
+    line-height: 1;
+    user-select: none;
+    cursor: pointer;
+    position: relative;
+}
+
+/* Piezas: sombra en todas para que se distingan sobre cualquier casilla */
+.pieza {
+    line-height: 1;
+    /* Sombra suave para separar la pieza del fondo */
+    text-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+}
+/* Blancas: el glifo hueco ya trae su contorno negro; lo rellenamos de blanco
+   por dentro con una sombra blanca pegada en todas direcciones (sin transparencia) */
+.pieza.w {
+    color: #000;
+    text-shadow:
+        0 0 1px #fff,
+        1px 0 1px #fff, -1px 0 1px #fff,
+        0 1px 1px #fff, 0 -1px 1px #fff,
+        1px 1px 1px #fff, -1px -1px 1px #fff,
+        1px -1px 1px #fff, -1px 1px 1px #fff,
+        /* sombra de separación del fondo, va la última */
+        0 2px 4px rgba(0, 0, 0, 0.5);
+}
+/* Negras: relleno negro; la sombra general basta para destacarlas */
+.pieza.b {
+    color: #111;
+}
+
+.clara  { background: var(--clara); }
+.oscura { background: var(--oscura); }
+.casilla.seleccionada { background: var(--resaltada); }
+
+/* Coordenadas (letras y números) en las esquinas de las casillas */
+.coord {
+    position: absolute;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 1;
+    user-select: none;
+    pointer-events: none;
+}
+.coord.fila {
+    top: 3px;
+    left: 3px;
+}
+.coord.columna {
+    bottom: 3px;
+    right: 3px;
+}
+/* El texto toma el color contrario al fondo de la casilla, como en chess.com */
+.clara .coord  { color: var(--oscura); }
+.oscura .coord { color: var(--clara); }
+
+/* Rey en jaque: rojo. En jaque mate: rojo más oscuro. */
+.casilla.jaque { background: #ff0000 !important; }
+.casilla.jaque-mate { background: #700000 !important; }
+
+/* Punto que marca los movimientos posibles */
+.casilla.movible::after {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--destino);
+}
+
+/* Cuando el destino tiene una pieza que puedes capturar */
+.casilla.captura::after {
+    content: "";
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 4px solid var(--destino);
+    box-sizing: border-box;
+    background: transparent;
+}
+
+.controles {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 240px;
+}
+
+/* Botones de respuesta a la oferta de tablas: se despliegan al ofrecer */
+.respuesta-tablas {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.oculto { display: none; }
+
+.estado {
+    background: #262421;
+    color: #e8e6e3;
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.panel {
+    max-height: 420px;
+    overflow-y: auto;
+    background: #262421;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    color: #e8e6e3;
+}
+
+.panel h2 {
+    font-size: 16px;
+    margin: 0;
+    padding: 14px 16px;
+    border-bottom: 1px solid #3b3936;
+}
+
+#jugadas .turno {
+    display: grid;
+    grid-template-columns: 34px 1fr 1fr;
+    align-items: center;
+    padding: 6px 12px;
+}
+
+#jugadas .turno:nth-child(odd) { background: #2b2926; }
+
+.num { color: #8b8987; }
+.mov { padding: 2px 6px; }
+.sin-jugadas { padding: 16px; color: #8b8987; }
+
+/* Columna del medio: jugadas */
+.jugadas-col { width: 240px; }
+
+/* Panel de narración en lenguaje natural */
+.narracion { width: 280px; }
+
+#narracion .linea {
+    display: flex;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    line-height: 1.35;
+}
+
+#narracion .linea:nth-child(odd) { background: #2b2926; }
+
+#narracion .linea .idx { color: #8b8987; min-width: 34px; }
+#narracion .linea .blancas { color: #f0f0f0; }
+#narracion .linea .negras { color: #bdbdbd; }
+
+button {
+    background: #3b9c4a;
+    color: #fff;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+button:hover { background: #47b357; }
+
+/* Indicador de reconocimiento de voz */
+.escuchando {
+    min-height: 20px;
+    font-size: 13px;
+    color: #e8e6e3;
+    padding: 4px 2px;
+}
+.escuchando.activo { color: #f7ec74; }
+.escuchando.error  { color: #e88; }
+
+#escuchar.grabando {
+    background: #c0392b;
+    animation: pulso 1s ease-in-out infinite;
+}
+@keyframes pulso {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.6; }
+}
