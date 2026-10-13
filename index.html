@@ -1,48 +1,366 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ajedrez</title>
-<link rel="stylesheet" href="estilos.css">
+    <meta name="google-site-verification" content="dqg8aSwjnhpn6jMfdEYjGzeqAM5FWGcxDwdznHuvW4E" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sinonimia y Antonimia</title>
+    <link rel="stylesheet" href="./styles.css">
 </head>
+
 <body>
-    <div class="tablero" id="tablero"></div>
+    <!-- ================= PANTALLA 1: MENÚ ================= -->
+    <section id="pantalla-menu" class="pantalla pantalla-menu activa">
+        <div class="menu-caja">
+            <h1 class="menu-titulo">
+                <span class="menu-titulo-1">= SINONIMIA</span>
+                <span class="menu-titulo-amp">&amp;</span>
+                <span class="menu-titulo-2">ANTONIMIA ≠</span>
+            </h1>
 
-    <!-- Columna izquierda: estado y botones de control -->
-    <div class="controles">
-        <div class="estado" id="estado">Turno de las blancas</div>
-        <button id="reiniciar">Reiniciar partida</button>
-        <button id="rendirse">🏳️ Me rindo</button>
-        <div class="respuesta-rendicion oculto" id="respuestaRendicion">
-            <button id="confirmarRendicion">✅ Sí, me rindo</button>
-            <button id="cancelarRendicion">❌ No, seguir jugando</button>
+            <div class="menu-opciones">
+                <button type="button" class="opcion opcion-sinonimos" data-modo="s">
+                    <span class="opcion-tecla">S</span>
+                    <span class="opcion-nombre">SINÓNIMOS</span>
+                    <span class="opcion-desc">Palabras con significado parecido</span>
+                </button>
+                <button type="button" class="opcion opcion-antonimos" data-modo="a">
+                    <span class="opcion-tecla">A</span>
+                    <span class="opcion-nombre">ANTÓNIMOS</span>
+                    <span class="opcion-desc">Palabras con significado opuesto</span>
+                </button>
+            </div>
+
+            <p class="menu-pista">Pulsa <b>S</b> o <b>A</b>, o haz clic en una opción</p>
         </div>
-        <button id="tablas">🤝 Tablas</button>
-        <div class="respuesta-tablas oculto" id="respuestaTablas">
-            <button id="aceptar">✅ Aceptar tablas</button>
-            <button id="rechazar">❌ Rechazar tablas</button>
+    </section>
+
+    <!-- ================= PANTALLA 2: JUEGO ================= -->
+    <section id="pantalla-juego" class="pantalla pantalla-juego">
+        <header class="hud">
+            <button type="button" class="hud-btn hud-volver" data-accion="volver">◂ Menú</button>
+        </header>
+
+        <main class="tablero">
+            <div id="contenedor"></div>
+            <div class="caja-respuesta">
+                <input type="text" id="respuesta" class="input-respuesta"
+                    placeholder="Escribe tu respuesta y pulsa ENTER…"
+                    autocomplete="off" autocapitalize="off" spellcheck="false"
+                    enterkeyhint="send">
+                <button type="button" class="btn-enviar" data-tecla="Enter">Enviar ➤</button>
+            </div>
+        </main>
+
+        <div class="acciones">
+            <button type="button" class="hud-btn hud-enter" data-tecla="Enter">
+                <span class="accion-tecla">⏎</span> Responder
+            </button>
+            <button type="button" class="hud-btn hud-soluciones" data-tecla="1">
+                <span class="accion-tecla">1</span> Ver soluciones
+            </button>
+            <button type="button" class="hud-btn hud-otra" data-accion="otra">
+                <span class="accion-tecla">R</span> Otra palabra
+            </button>
         </div>
-        <button id="voz">🔊 Voz activada</button>
-        <button id="describir">Describir posición</button>
-        <button id="escuchar">🎤 Decir jugada</button>
-        <div class="escuchando" id="escuchando"></div>
-    </div>
+    </section>
 
-    <!-- Columna del medio: jugadas -->
-    <div class="panel jugadas-col">
-        <h2>Jugadas</h2>
-        <div id="jugadas"><div class="sin-jugadas">Aún no hay jugadas</div></div>
-    </div>
+    <script src="Prueba.js"></script>
+    <!-- Esta capa solo gestiona las PANTALLAS y reutiliza los atajos de teclado
+         existentes (lanza el mismo keydown que ya escucha el juego). No toca su lógica. -->
+    <script>
+        const pantallaMenu = document.getElementById("pantalla-menu");
+        const pantallaJuego = document.getElementById("pantalla-juego");
+        const inputRespuesta = document.getElementById("respuesta");
 
-    <!-- Columna derecha: narración -->
-    <div class="panel narracion">
-        <h2>Narración</h2>
-        <div id="narracion"><div class="sin-jugadas">Aún no hay jugadas</div></div>
-    </div>
+        /* ======= CAJA DE TEXTO EN LUGAR DEL prompt() FEO =======
+           Prueba.js pide la respuesta con prompt() en cada palabra. En vez de
+           tocar esos bloques (los que copias y pegas), sobrescribimos la función
+           prompt del navegador: cuando el juego la llame, devolvemos lo que haya
+           escrito el usuario en nuestra cajita y la vaciamos. Así no cambia nada
+           en Prueba.js y la respuesta se escribe en un campo con estilo. */
+        window.prompt = function () {
+            const valor = inputRespuesta.value.trim();
+            inputRespuesta.value = "";
+            return valor;
+        };
 
-    <!-- Scripts normales: funciona con doble clic, sin servidor -->
-    <script src="chess.min.js"></script>
-    <script src="juego.js"></script>
+        function lanzarTecla(tecla) {
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: tecla, bubbles: true }));
+        }
+
+        function marcarModo(modo) {
+            const esSinonimos = modo.toLowerCase() === "s";
+            pantallaJuego.classList.toggle("modo-sinonimos", esSinonimos);
+            pantallaJuego.classList.toggle("modo-antonimos", !esSinonimos);
+            document.body.classList.toggle("fondo-sinonimos", esSinonimos);
+            document.body.classList.toggle("fondo-antonimos", !esSinonimos);
+        }
+
+        function irAJuego(modo) {
+            pantallaMenu.classList.remove("activa");
+            pantallaJuego.classList.add("activa");
+            marcarModo(modo);
+            // Guardamos el modo en la URL para poder "recargar" en el mismo modo
+            // al pedir otra palabra, sin volver al menú.
+            location.hash = modo.toLowerCase();
+            // Lanza el atajo (s/a) que ya genera la palabra en #contenedor.
+            lanzarTecla(modo);
+            // Ponemos el foco en la cajita para escribir directamente.
+            inputRespuesta.focus();
+        }
+
+        // Opciones del menú.
+        document.querySelectorAll(".opcion[data-modo]").forEach((op) => {
+            op.addEventListener("click", () => irAJuego(op.getAttribute("data-modo")));
+        });
+
+        // Botones del HUD y el botón "Enviar" de la cajita: todos los que lanzan
+        // una tecla del juego. "Responder"/"Enviar" (Enter) abren un prompt() que
+        // bloquea el navegador al instante y cortaría el sonido; por eso sonamos
+        // el clic y lanzamos la tecla con un pequeño retardo para que se oiga.
+        document.querySelectorAll(".hud-btn[data-tecla], .btn-enviar[data-tecla]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                sonidoClic();
+                btn.blur();
+                setTimeout(() => lanzarTecla(btn.getAttribute("data-tecla")), 90);
+            });
+        });
+
+        // Recarga la página pero dando un respiro para que el sonido del clic
+        // se oiga antes (si recargáramos al instante, el audio se cortaría).
+        function recargarConSonido() {
+            sonidoClic();
+            setTimeout(() => location.reload(), 120);
+        }
+
+        // Volver al menú: borramos el modo guardado y recargamos para dejar el
+        // juego en su estado inicial limpio (vuelve al menú).
+        document.querySelector('.hud-btn[data-accion="volver"]').addEventListener("click", () => {
+            location.hash = "";
+            recargarConSonido();
+        });
+
+        // "Otra palabra": como el modo queda guardado en la URL, al recargar se
+        // vuelve a entrar en el mismo modo y el juego elige una palabra nueva al azar.
+        document.querySelector('.hud-btn[data-accion="otra"]').addEventListener("click", () => {
+            recargarConSonido();
+        });
+
+        // Atajo de teclado "R" para pedir otra palabra, pero solo cuando ya
+        // estamos jugando (no en el menú). Equivale a pulsar "Otra palabra".
+        // Importante: lo ignoramos si estás escribiendo en la cajita, para no
+        // recargar al teclear una palabra que contenga la letra "r".
+        document.addEventListener("keydown", (event) => {
+            if (pantallaMenu.classList.contains("activa")) return;
+            if (document.activeElement === inputRespuesta) return;
+            if (event.key === "r" || event.key === "R") {
+                location.reload();
+            }
+        });
+
+        // Los atajos de teclado S / A también cambian de pantalla la primera vez.
+        document.addEventListener("keydown", (event) => {
+            if (!pantallaMenu.classList.contains("activa")) return;
+            const k = event.key.toLowerCase();
+            if (k === "s" || k === "a") {
+                pantallaMenu.classList.remove("activa");
+                pantallaJuego.classList.add("activa");
+                marcarModo(k);
+                location.hash = k;
+            }
+        });
+
+        // Al cargar la página: si hay un modo guardado en la URL (porque veníamos
+        // jugando y hemos pedido "otra palabra"), saltamos directos a ese modo
+        // en vez de mostrar el menú.
+        window.addEventListener("DOMContentLoaded", () => {
+            const modoGuardado = location.hash.replace("#", "").toLowerCase();
+            if (modoGuardado === "s" || modoGuardado === "a") {
+                irAJuego(modoGuardado);
+            }
+        });
+
+        /* ================= SONIDOS DE ACIERTO / ERROR =================
+           Generamos los sonidos con la Web Audio API, así no hace falta
+           ningún archivo de audio en la carpeta. */
+        let audioCtx = null;
+        function getAudioCtx() {
+            // El navegador solo permite crear/arrancar el audio tras una
+            // interacción del usuario (clic o tecla), por eso lo creamos aquí.
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === "suspended") audioCtx.resume();
+            return audioCtx;
+        }
+
+        // Reproduce una nota: frecuencia (Hz), momento de inicio, duración,
+        // tipo de onda y volumen (0 a 1). Por defecto onda senoidal suave.
+        function nota(frecuencia, inicio, duracion, tipo = "sine", volumen = 0.12) {
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = tipo;
+            osc.frequency.value = frecuencia;
+            // Envolvente suave: ataque gradual y caída redonda, sin "clic".
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime + inicio);
+            gain.gain.exponentialRampToValueAtTime(volumen, ctx.currentTime + inicio + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + inicio + duracion);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(ctx.currentTime + inicio);
+            osc.stop(ctx.currentTime + inicio + duracion);
+        }
+
+        // Acierto: tres notas senoidales ascendentes, suaves y redondas.
+        function sonidoAcierto() {
+            nota(523.25, 0, 0.22);    // Do
+            nota(659.25, 0.12, 0.22); // Mi
+            nota(783.99, 0.24, 0.34); // Sol
+        }
+
+        // Error: dos notas graves descendentes. Un pelín más notorio que el
+        // acierto: onda triangular (algo más de cuerpo que la senoidal, pero sin
+        // raspar como la sawtooth) y volumen un poco mayor.
+        function sonidoError() {
+            nota(277, 0, 0.3, "triangle", 0.2);    // tono grave
+            nota(196, 0.17, 0.42, "triangle", 0.2); // más grave aún
+        }
+
+        // Clic estilo Minecraft: un "pop" de madera suave y mate. Usamos una onda
+        // senoidal (redonda, nada metálica) a tono medio-bajo, con ataque muy
+        // suave y volumen bajo para que no resulte irritante.
+        function sonidoClic() {
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(300, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.08);
+            // Ataque suave (sin "clic" seco) y caída rápida pero redonda.
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.13, ctx.currentTime + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.11);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+        }
+
+        // Hover: un toque muy tenue y redondo al pasar el cursor por encima.
+        function sonidoHover() {
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(440, ctx.currentTime);
+            gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.06);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.07);
+        }
+
+        // Observamos el #contenedor: cada vez que el juego añade el mensaje de
+        // respuesta correcta o incorrecta, disparamos el sonido correspondiente.
+        // Así no tocamos la lógica de acierto/error de Prueba.js.
+        //
+        // Ojo: Prueba.js registra un listener de Enter por cada intento, así que
+        // en un mismo Enter puede añadir VARIOS mensajes a la vez. Para que el
+        // sonido no se apile, juntamos todos los mensajes de una misma ráfaga y
+        // reproducimos UN solo sonido, dando prioridad al acierto si aparece.
+        const contenedor = document.getElementById("contenedor");
+
+        // Guardamos qué tecla "de juego" se pulsó por última vez. Esto es lo que
+        // de verdad distingue "he metido una respuesta" (Enter) de "quiero ver
+        // soluciones" (1). Inferirlo del DOM no es fiable porque Prueba.js usa
+        // innerHTML += y reconstruye todos los nodos cada vez.
+        let ultimaTecla = null;
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") ultimaTecla = "Enter";
+            else if (event.key === "1" || event.key === "NumPad1") ultimaTecla = "1";
+        }, true); // fase de captura: se registra antes que los listeners del juego
+
+        let ultimoResultado = null; // "acierto" o "error" del intento actual
+        let temporizador = null;
+
+        function reproducirResultadoDeLaRafaga() {
+            if (ultimoResultado === "acierto") sonidoAcierto();
+            else if (ultimoResultado === "error") sonidoError();
+            ultimoResultado = null;
+            temporizador = null;
+        }
+
+        const observador = new MutationObserver((mutaciones) => {
+            let hayNuevasSoluciones = false;
+            for (const mut of mutaciones) {
+                for (const nodo of mut.addedNodes) {
+                    if (nodo.nodeType !== 1 || !nodo.querySelector) continue; // solo elementos
+                    // Nos quedamos con el ÚLTIMO mensaje de la ráfaga: ese es el
+                    // de tu intento actual. Cada mensaje nuevo pisa al anterior.
+                    if (nodo.querySelector(".respuestaCorrecta")) ultimoResultado = "acierto";
+                    else if (nodo.querySelector(".respuestaIncorrecta")) ultimoResultado = "error";
+                    if (nodo.querySelector(".soluciones")) hayNuevasSoluciones = true;
+                }
+            }
+
+            // El texto largo solo se ve en el PRIMER resultado de la palabra; los
+            // siguientes quedan "solo-icono" para que no se amontonen los textos.
+            dejarTextoSoloEnElPrimerResultado();
+
+            // El sonido solo se dispara si tu última acción fue meter una
+            // respuesta con ENTER. Si fue pulsar "1" (ver soluciones), no suena.
+            if (ultimaTecla === "Enter" && ultimoResultado) {
+                clearTimeout(temporizador);
+                temporizador = setTimeout(reproducirResultadoDeLaRafaga, 50);
+            } else {
+                ultimoResultado = null;
+            }
+
+            // Prueba.js re-añade una línea de soluciones por cada intento.
+            // Dejamos solo la última y borramos las repetidas.
+            if (hayNuevasSoluciones) {
+                dejarSoloUnaSolucion();
+            }
+        });
+        observador.observe(contenedor, { childList: true });
+
+        // Elimina todas las líneas de "Soluciones" menos la última añadida, para
+        // que al pulsar "1" tras varios intentos no se dupliquen.
+        function dejarSoloUnaSolucion() {
+            const parrafosSoluciones = Array.from(contenedor.querySelectorAll("p"))
+                .filter((p) => p.querySelector(".soluciones"));
+            // Dejamos la última, quitamos el resto.
+            for (let i = 0; i < parrafosSoluciones.length - 1; i++) {
+                parrafosSoluciones[i].remove();
+            }
+        }
+
+        // Recorre todos los párrafos de resultado (✓/✗) y deja el texto solo en
+        // el PRIMERO; a los demás les pone "solo-icono" para que únicamente se
+        // vea el icono. Se recalcula tras cada cambio porque Prueba.js usa
+        // innerHTML += y reconstruye todos los nodos en cada intento.
+        function dejarTextoSoloEnElPrimerResultado() {
+            const resultados = Array.from(contenedor.querySelectorAll("p"))
+                .filter((p) => p.querySelector(".respuestaCorrecta") || p.querySelector(".respuestaIncorrecta"));
+            resultados.forEach((p, i) => {
+                p.classList.toggle("solo-icono", i > 0);
+            });
+        }
+
+        // ========== SONIDOS DE BOTÓN ESTILO MINECRAFT ==========
+        // A todos los botones del juego (opciones del menú, HUD y acciones) les
+        // ponemos un "toque" suave al pasar el cursor y un "clac" al pulsar.
+        document.querySelectorAll(".opcion, .hud-btn, .btn-enviar").forEach((boton) => {
+            boton.addEventListener("mouseenter", sonidoHover);
+            // Los botones con acción propia ya reproducen su clic:
+            //  - data-accion: Menú y Otra palabra (recargarConSonido)
+            //  - data-tecla: Responder, Ver soluciones y Enviar (su propio handler)
+            // Así evitamos que el clic suene doble.
+            if (!boton.hasAttribute("data-accion") && !boton.hasAttribute("data-tecla")) {
+                boton.addEventListener("click", sonidoClic);
+            }
+        });
+    </script>
 </body>
+
 </html>
